@@ -47,8 +47,8 @@ class TestHomePage:
 
         # Check for navigation elements
         assert 'navbar' in data
-        assert 'Features' in data
-        assert 'Security' in data
+        assert 'About' in data
+        assert 'The Open Harbor' in data
 
     def test_home_page_includes_cta_buttons(self, client):
         """Test that call-to-action buttons are present."""
@@ -57,7 +57,7 @@ class TestHomePage:
 
         # Check for CTA buttons
         assert 'Start a free account' in data or 'Start free account' in data
-        assert 'Learn more' in data
+        assert 'See how it works' in data
 
     def test_home_page_includes_features_section(self, client):
         """Test that features section is present."""
@@ -65,9 +65,10 @@ class TestHomePage:
         data = response.data.decode('utf-8')
 
         # Check for features content
-        assert 'Privacy First' in data
-        assert 'Community Driven' in data
-        assert 'Simple & Fast' in data
+        assert 'Built for photographers' in data
+        assert 'Drag & Drop Simple' in data
+        assert 'Beautiful Galleries' in data
+        assert 'Lightning Fast' in data
 
     def test_home_page_includes_footer(self, client):
         """Test that footer is present with copyright."""
