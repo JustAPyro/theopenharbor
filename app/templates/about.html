@@ -1,0 +1,62 @@
+{% extends "root.html" %}
+
+{% block title %}About Us - The Open Harbor{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 text-center">
+            <h1 class="display-4 fw-bold mb-4" style="color: var(--color-primary);">Our Mission: Simple, Honest File Sharing</h1>
+            <p class="lead" style="color: var(--color-anchor);">
+                At The Open Harbor, we believe that sharing and storing files shouldn't be complicated or expensive. We've built a platform focused on simplicity and accessibility, so you can share your work and memories with peace of mind.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container my-5">
+    <div class="row g-5 align-items-center">
+        <div class="col-md-6 order-md-2">
+            
+        </div>
+        <div class="col-md-6 order-md-1">
+            <h2 class="h3 fw-bold mb-3" style="color: var(--color-anchor);">Designed for Everyone</h2>
+            <p>
+                Whether you're a student sharing a project, a family sending vacation photos, or a small business collaborating on documents, The Open Harbor is designed for you. We focus on creating a user-friendly experience that removes the technical barriers of file management.
+            </p>
+            <p>
+                Our core commitment is to provide a service that just works, with intuitive navigation and beautiful, simple galleries that let your content speak for itself.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container my-5">
+    <div class="row g-5 align-items-center">
+        <div class="col-md-6">
+            
+        </div>
+        <div class="col-md-6">
+            <h2 class="h3 fw-bold mb-3" style="color: var(--color-anchor);">A Photographer's Best Friend</h2>
+            <p>
+                The Open Harbor was created with photographers and creative professionals in mind. We understand the unique needs of managing high-resolution images, client galleries, and entire photo shoots. Our platform ensures your work is showcased beautifully and delivered to clients with a single, elegant link.
+            </p>
+            <p>
+                No more confusing uploads, complex folders, or hidden fees. We offer straightforward, transparent pricing so you can focus on what you do best: creating.
+            </p>
+        </div>
+    </div>
+</div>
+
+<div class="container my-5 text-center">
+    <div class="p-5" style="background-color: var(--color-horizon); border-radius: var(--radius-card);">
+        <h3 class="fw-bold mb-3" style="color: var(--color-primary);">Ready to give it a try?</h3>
+        <p class="lead mb-4" style="color: var(--color-anchor);">
+            Store, share, and manage your files with the ease and security of The Open Harbor.
+        </p>
+        <a href="{{ url_for('auth.signup') }}" class="btn btn-primary btn-lg" role="button">
+            Try it free
+        </a>
+    </div>
+</div>
+{% endblock %}
