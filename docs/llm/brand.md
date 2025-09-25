@@ -1,12 +1,12 @@
-# TheSafeHarbor — Full Brand & Design Report
+# The Open Harbor — Full Brand & Design Report
 
-Nice name — *TheSafeHarbor* immediately communicates refuge, trust, and a human-first brand. Below is a thorough, actionable brand and design guide you can hand to a designer or implement directly in your product. It covers visual identity, accessible color & type systems, UI patterns, developer tokens, motion, imagery, copy/voice, and a long list of common mistakes junior designers make — with fixes.
+Nice name — *The Open Harbor* immediately communicates ease, accessibility, and a photographer-first brand. Below is a thorough, actionable brand and design guide you can hand to a designer or implement directly in your product. It covers visual identity, accessible color & type systems, UI patterns, developer tokens, motion, imagery, copy/voice, and a long list of common mistakes junior designers make — with fixes.
 
 ---
 
 # 1 — Executive summary (one-paragraph)
 
-**Positioning:** TheSafeHarbor is a warm, trusted refuge for files — privacy-minded, community-oriented (nonprofit-friendly if you choose), and approachable for creatives and small orgs. Visually: soft, modern, and nautical-but-abstract (no literal clip-art). Use deep teal as your anchor color plus a warm golden beacon color to differentiate from all-blue competitors. Prioritize accessible contrast, generous spacing, and human microcopy.
+**Positioning:** The Open Harbor is a simple, affordable file sharing platform built specifically for photographers and creative professionals. Focus on ease-of-use, beautiful galleries, and transparent pricing rather than complex security features. Visually: soft, modern, and nautical-but-abstract (no literal clip-art). Use deep teal as your anchor color plus a warm golden beacon color to differentiate from all-blue competitors. Prioritize accessible contrast, generous spacing, and human microcopy.
 
 ---
 
@@ -14,17 +14,17 @@ Nice name — *TheSafeHarbor* immediately communicates refuge, trust, and a huma
 
 Core concepts to express visually:
 
-* **Refuge & trust** (harbor, anchor, calm water)
-* **Guidance & warmth** (beacon / lighthouse, golden light)
-* **Human-first** (rounded shapes, warm neutrals, friendly copy)
-* **Modern & reliable** (clean grid, restrained geometric type)
+* **Simplicity & ease** (clean layouts, intuitive navigation)
+* **Creative showcase** (beautiful galleries, photo-focused design)
+* **Affordability & accessibility** (friendly pricing, no barriers)
+* **Professional quality** (clean grid, reliable performance)
 
 Mood words to use when creating imagery & layout: calm, steady, warm, honest, clear, welcoming.
 
 Moodboard cues:
 
 * Abstract shapes inspired by waves and arcs (no literal boat/cargo photos)
-* Close-up photos of hands, community interactions, studio/creative scenes
+* Close-up photos of photographers at work, client meetings, gallery showings, studio scenes
 * Soft sand/off-white backgrounds rather than stark sterile white
 * Light vignettes of golden-hour lighting
 
@@ -225,19 +225,20 @@ font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica N
 
 # 9 — Voice & microcopy
 
-**Tone:** Warm, trustworthy, plainspoken. Avoid jargon.
+**Tone:** Friendly, encouraging, photographer-focused. Speak their language.
 **Examples:**
 
-* Headline (home): *“A safe place for your files.”*
-* Subhead: *“Secure file storage & sharing — built for people, not ads.”*
-* CTA: *“Start a free account”* or *“Donate & join”* (if nonprofit).
-* Empty state: *“Nothing here yet — upload a file to get started.”*
-* Error (upload fail): *“Upload failed. Try again or contact support.”*
+* Headline (home): *"Easy file sharing for photographers"*
+* Subhead: *"Store and share your photos with clients and teams — simple, affordable, and built for creatives."*
+* CTA: *"Try it free"* or *"See how it works"*
+* Empty state: *"Ready to share your first gallery? Drag photos here to get started."*
+* Error (upload fail): *"Upload didn't work. Check your connection and try again."*
 
-**Security messaging** — be clear but not frightening:
+**Photography messaging** — focus on their workflow:
 
-* “Files encrypted in transit and at rest.” (only claim if true)
-* “We’re exploring third-party audits & open transparency reports” (if planning).
+* "Perfect for high-res photos and client galleries"
+* "Beautiful galleries that make your work shine"
+* "Share entire shoots with a single link"
 
 ---
 
@@ -285,9 +286,9 @@ Use these tokens in code (CSS variables, theme provider in React, etc.). Provide
 # 12 — SEO, metadata & quick copy
 
 **Suggested meta description:**
-*A safe, privacy-first file sharing platform for creators and small organizations. Secure storage, easy sharing, and community-driven governance.*
+*Simple, affordable file sharing for photographers. Beautiful galleries, easy client sharing, and transparent pricing designed for creative professionals.*
 
-**Keywords to seed:** secure file sharing, privacy-first cloud storage, nonprofit file hosting, creative file transfer.
+**Keywords to seed:** photographer file sharing, photo gallery hosting, client photo delivery, photography workflow tools, photo sharing for photographers.
 
 ---
 
