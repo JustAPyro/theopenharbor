@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="{% block meta_description %}A safe, privacy-first file sharing platform for creators and small organizations. Secure storage, easy sharing, and community-driven governance.{% endblock %}">
+    <title>{% block title %}The Open Harbor - A safe place for your files{% endblock %}</title>
+
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/root.css') }}">
+
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('main.home') }}" role="button">
+                <!-- Future logo placement -->
+                <i class="bi bi-shield-check me-2"></i>
+                The Open Harbor
+            </a>
+
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="#features">Features</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#security">Security</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="#about">About</a>
+                    </li>
+                    <li class="nav-item ms-2">
+                        <a class="btn btn-outline-primary" href="#signup" role="button">Start free account</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-5" style="background-color: var(--color-white); border-top: 1px solid #E6E6E6;">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <h5 class="h6">The Open Harbor</h5>
+                    <p class="text-muted small">A safe place for your files. Secure file storage & sharing — built for people, not ads.</p>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6>Product</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="#features" class="text-muted text-decoration-none">Features</a></li>
+                        <li><a href="#security" class="text-muted text-decoration-none">Security</a></li>
+                        <li><a href="#" class="text-muted text-decoration-none">Pricing</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6>Company</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="#about" class="text-muted text-decoration-none">About</a></li>
+                        <li><a href="#" class="text-muted text-decoration-none">Community</a></li>
+                        <li><a href="#" class="text-muted text-decoration-none">Contact</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-2 col-md-6 mb-4">
+                    <h6>Legal</h6>
+                    <ul class="list-unstyled">
+                        <li><a href="#" class="text-muted text-decoration-none">Privacy</a></li>
+                        <li><a href="#" class="text-muted text-decoration-none">Terms</a></li>
+                        <li><a href="#" class="text-muted text-decoration-none">Security Policy</a></li>
+                    </ul>
+                </div>
+                <div class="col-lg-3 col-md-6 mb-4">
+                    <h6>Stay Connected</h6>
+                    <p class="text-muted small">Get updates on security and new features.</p>
+                    <div class="d-flex gap-2">
+                        <a href="#" class="text-muted" aria-label="Twitter"><i class="bi bi-twitter"></i></a>
+                        <a href="#" class="text-muted" aria-label="GitHub"><i class="bi bi-github"></i></a>
+                        <a href="#" class="text-muted" aria-label="Email"><i class="bi bi-envelope"></i></a>
+                    </div>
+                </div>
+            </div>
+            <hr class="my-4">
+            <div class="row align-items-center">
+                <div class="col-md-6">
+                    <p class="text-muted small mb-0">&copy; 2024 The Open Harbor. Files encrypted in transit and at rest.</p>
+                </div>
+                <div class="col-md-6 text-md-end">
+                    <small class="text-muted">Built with care for your privacy.</small>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Bootstrap 5 JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-C6RzsynM9kWDrMNeT87bh95OGNyZPhcTNXj1NW7RuBCsyN/o0jlpcV8Qyq46cDfL" crossorigin="anonymous"></script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>
