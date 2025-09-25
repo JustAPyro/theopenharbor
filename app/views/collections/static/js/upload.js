@@ -690,68 +690,107 @@ class CollectionUploader {
         const validFiles = Array.from(this.files.values()).filter(f => f.status === 'valid');
         const totalFiles = validFiles.length;
         let completedFiles = 0;
+        let totalBytes = validFiles.reduce((sum, file) => sum + file.file.size, 0);
+        let uploadedBytes = 0;
 
         this.updateProgress(0, `Uploading files...`);
 
-        // Upload files in parallel (increased for large photo sets)
-        const concurrentUploads = this.config.maxConcurrentUploads;
-        const uploadPromises = [];
+        // Enhanced progress tracking for R2 uploads
+        const fileProgressMap = new Map();
 
-        for (let i = 0; i < validFiles.length; i += concurrentUploads) {
-            const batch = validFiles.slice(i, i + concurrentUploads);
+        // Upload files in batches to prevent overwhelming the server
+        const batchSize = this.config.maxConcurrentUploads;
+        for (let i = 0; i < validFiles.length; i += batchSize) {
+            const batch = validFiles.slice(i, i + batchSize);
 
-            const batchPromises = batch.map(async (fileObj) => {
-                try {
-                    fileObj.status = 'uploading';
-                    this.updateFileCardStatus(fileObj);
+            const uploadPromises = batch.map(async (fileObj) => {
+                const maxRetries = 3;
+                let retryCount = 0;
 
-                    // Update loading screen with current file
-                    this.updateLoadingProgress(completedFiles, totalFiles, fileObj.name);
+                while (retryCount < maxRetries) {
+                    try {
+                        fileObj.status = 'uploading';
+                        this.updateFileCardStatus(fileObj);
 
-                    const uploadFormData = new FormData();
-                    uploadFormData.append('collection_id', collectionId);
-                    uploadFormData.append(`file_${fileObj.id}`, fileObj.file, fileObj.name);
+                        // Track progress for this specific file
+                        fileProgressMap.set(fileObj.id, { uploaded: 0, total: fileObj.file.size });
 
-                    const response = await fetch('/collections/api/upload-files', {
-                        method: 'POST',
-                        body: uploadFormData
-                    });
+                        const uploadFormData = new FormData();
+                        uploadFormData.append('collection_id', collectionId);
+                        uploadFormData.append(`file_${fileObj.id}`, fileObj.file, fileObj.name);
 
-                    if (!response.ok) {
-                        throw new Error(`Upload failed: ${response.statusText}`);
+                        const response = await this.uploadWithProgress(
+                            '/collections/api/upload-files',
+                            uploadFormData,
+                            (progress) => this.handleFileProgress(fileObj.id, progress, fileProgressMap, totalBytes)
+                        );
+
+                        if (response.success) {
+                            fileObj.status = 'uploaded';
+                            fileObj.progress = 100;
+                            completedFiles++;
+                            uploadedBytes += fileObj.file.size;
+                            this.updateFileCardStatus(fileObj);
+
+                            // Update loading overlay
+                            this.updateLoadingOverlay(completedFiles, totalFiles, uploadedBytes, totalBytes);
+
+                            this.addStatusMessage(`✓ ${fileObj.name} uploaded successfully`, 'success');
+
+                            // Show R2-specific info if available
+                            if (response.uploaded_files && response.uploaded_files[0] && response.uploaded_files[0].storage_info) {
+                                const storageInfo = response.uploaded_files[0].storage_info;
+                                console.log(`R2 upload info for ${fileObj.name}:`, storageInfo);
+                            }
+
+                            break; // Success, exit retry loop
+                        } else {
+                            throw new Error(response.error || 'Upload failed');
+                        }
+
+                    } catch (error) {
+                        retryCount++;
+                        console.error(`Upload attempt ${retryCount} failed for ${fileObj.name}:`, error);
+
+                        if (retryCount < maxRetries && this.isRetryableError(error)) {
+                            // Wait before retry with exponential backoff
+                            await this.delay(1000 * Math.pow(2, retryCount - 1));
+                            this.addStatusMessage(`⟳ Retrying ${fileObj.name} (attempt ${retryCount + 1}/${maxRetries})`, 'info');
+                        } else {
+                            // Max retries reached or non-retryable error
+                            fileObj.status = 'error';
+                            fileObj.errors = [this.getErrorMessage(error)];
+                            this.updateFileCardStatus(fileObj);
+                            this.addStatusMessage(`✗ ${fileObj.name} failed: ${this.getErrorMessage(error)}`, 'error');
+                            completedFiles++; // Count as completed to avoid hanging
+                            break; // Exit retry loop
+                        }
                     }
-
-                    const result = await response.json();
-
-                    if (result.success) {
-                        fileObj.status = 'uploaded';
-                        fileObj.progress = 100;
-                        this.uploadedBytes += fileObj.size;
-                        this.addStatusMessage(`✓ ${fileObj.name} uploaded successfully`, 'success');
-                    } else {
-                        throw new Error(result.error || 'Upload failed');
-                    }
-
-                } catch (error) {
-                    fileObj.status = 'error';
-                    fileObj.errors = [error.message];
-                    this.addStatusMessage(`✗ ${fileObj.name} failed: ${error.message}`, 'error');
                 }
 
-                completedFiles++;
-                const progress = (completedFiles / totalFiles) * 100;
-                this.updateProgress(progress, `Uploaded ${completedFiles} of ${totalFiles} files`);
-                this.updateLoadingProgress(completedFiles, totalFiles);
-                this.updateFileCardStatus(fileObj);
+                return fileObj;
             });
 
-            uploadPromises.push(...batchPromises);
+            // Wait for batch to complete before starting next batch
+            await Promise.all(uploadPromises);
 
-            // Wait for this batch to complete before starting the next
-            await Promise.all(batchPromises);
+            // Update overall progress
+            const overallProgress = (completedFiles / totalFiles) * 100;
+            this.updateProgress(overallProgress, `Uploaded ${completedFiles} of ${totalFiles} files`);
         }
 
-        await Promise.all(uploadPromises);
+        const successfulUploads = validFiles.filter(f => f.status === 'uploaded').length;
+        const failedUploads = validFiles.filter(f => f.status === 'error').length;
+
+        if (successfulUploads > 0) {
+            this.updateProgress(100, `Upload complete: ${successfulUploads} files uploaded successfully`);
+
+            if (failedUploads > 0) {
+                this.showWarning(`${successfulUploads} files uploaded successfully, ${failedUploads} failed`);
+            }
+        } else {
+            this.showError('All file uploads failed');
+        }
     }
 
     cancelUpload() {
@@ -856,6 +895,29 @@ class CollectionUploader {
         this.elements.errorAlert.style.display = 'none';
         this.elements.successAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         this.announceToScreenReader(`Success: ${message}`, 'polite');
+    }
+
+    showWarning(message) {
+        // Create warning alert if it doesn't exist
+        let warningAlert = document.getElementById('warningAlert');
+        if (!warningAlert) {
+            warningAlert = document.createElement('div');
+            warningAlert.id = 'warningAlert';
+            warningAlert.className = 'alert alert-warning alert-dismissible fade show';
+            warningAlert.innerHTML = `
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <span id="warningMessage"></span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            this.elements.errorAlert.parentNode.insertBefore(warningAlert, this.elements.errorAlert.nextSibling);
+        }
+
+        document.getElementById('warningMessage').textContent = message;
+        warningAlert.style.display = 'block';
+        this.elements.errorAlert.style.display = 'none';
+        this.elements.successAlert.style.display = 'none';
+        warningAlert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        this.announceToScreenReader(`Warning: ${message}`, 'assertive');
     }
 
     hideErrors() {
@@ -1004,6 +1066,144 @@ class CollectionUploader {
             this.elements.currentFileName.textContent = 'Finalizing collection...';
         } else {
             this.elements.loadingProgressText.textContent = `Uploading ${completedFiles} of ${totalFiles} files`;
+        }
+    }
+
+    // R2-Enhanced Upload Methods
+    handleFileProgress(fileId, progress, progressMap, totalBytes) {
+        // Update individual file progress
+        const fileProgress = progressMap.get(fileId);
+        if (fileProgress) {
+            fileProgress.uploaded = (progress.loaded || 0);
+
+            // Calculate overall upload progress
+            let totalUploaded = 0;
+            for (const [id, prog] of progressMap) {
+                totalUploaded += prog.uploaded;
+            }
+
+            const overallPercent = totalBytes > 0 ? (totalUploaded / totalBytes) * 100 : 0;
+            this.updateLoadingProgress(null, null, totalUploaded, totalBytes, overallPercent);
+        }
+    }
+
+    async uploadWithProgress(url, formData, progressCallback) {
+        return new Promise((resolve, reject) => {
+            const xhr = new XMLHttpRequest();
+
+            xhr.upload.addEventListener('progress', (e) => {
+                if (e.lengthComputable && progressCallback) {
+                    progressCallback({
+                        loaded: e.loaded,
+                        total: e.total,
+                        percent: (e.loaded / e.total) * 100
+                    });
+                }
+            });
+
+            xhr.addEventListener('load', () => {
+                try {
+                    const response = JSON.parse(xhr.responseText);
+                    resolve(response);
+                } catch (e) {
+                    reject(new Error('Invalid response format'));
+                }
+            });
+
+            xhr.addEventListener('error', () => {
+                reject(new Error('Network error during upload'));
+            });
+
+            xhr.addEventListener('abort', () => {
+                reject(new Error('Upload was cancelled'));
+            });
+
+            xhr.addEventListener('timeout', () => {
+                reject(new Error('Upload timeout'));
+            });
+
+            // Set timeout for large file uploads (30 minutes)
+            xhr.timeout = 30 * 60 * 1000;
+
+            xhr.open('POST', url);
+            xhr.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+            xhr.send(formData);
+        });
+    }
+
+    isRetryableError(error) {
+        // Define errors that are worth retrying
+        const retryableErrors = [
+            'Network error',
+            'timeout',
+            'Upload timeout',
+            'Connection reset',
+            'Server temporarily unavailable'
+        ];
+
+        const errorMessage = error.message || error.toString();
+        return retryableErrors.some(retryableError =>
+            errorMessage.toLowerCase().includes(retryableError.toLowerCase())
+        );
+    }
+
+    getErrorMessage(error) {
+        // Map R2-specific errors to user-friendly messages
+        const errorMessage = error.message || error.toString();
+
+        const errorMappings = {
+            'ValidationError': 'File validation failed',
+            'UploadError': 'Upload failed due to network issues',
+            'AccessDenied': 'Insufficient permissions to upload file',
+            'EntityTooLarge': 'File size exceeds storage limits',
+            'InvalidRequest': 'Invalid file format or corrupted file',
+            'NetworkError': 'Network connection lost during upload',
+            'timeout': 'Upload timed out - please try again',
+            'Upload timeout': 'Upload timed out - please try again'
+        };
+
+        // Check for known error patterns
+        for (const [errorType, message] of Object.entries(errorMappings)) {
+            if (errorMessage.includes(errorType)) {
+                return message;
+            }
+        }
+
+        return errorMessage;
+    }
+
+    async delay(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    updateLoadingOverlay(completedFiles, totalFiles, uploadedBytes, totalBytes, overallPercent = null) {
+        // Enhanced loading overlay update method for R2 uploads
+        if (completedFiles !== null && totalFiles !== null) {
+            this.elements.loadingFilesCompleted.textContent = completedFiles;
+            this.elements.loadingFilesTotal.textContent = totalFiles;
+        }
+
+        if (uploadedBytes !== null) {
+            this.elements.loadingDataUploaded.textContent = this.formatFileSize(uploadedBytes);
+        }
+
+        if (overallPercent !== null) {
+            this.elements.loadingProgressFill.style.width = `${overallPercent}%`;
+            this.elements.loadingProgressPercent.textContent = `${Math.round(overallPercent)}%`;
+        }
+
+        // Update time remaining calculation based on bytes rather than just files
+        if (uploadedBytes > 0 && totalBytes > 0 && this.uploadStartTime) {
+            const elapsed = (Date.now() - this.uploadStartTime) / 1000; // seconds
+            const bytesPerSecond = uploadedBytes / elapsed;
+            const remainingBytes = totalBytes - uploadedBytes;
+            const timeRemaining = remainingBytes / bytesPerSecond;
+
+            if (timeRemaining > 60) {
+                this.elements.loadingTimeRemaining.textContent = `${Math.round(timeRemaining / 60)}m`;
+            } else {
+                this.elements.loadingTimeRemaining.textContent = `${Math.round(timeRemaining)}s`;
+            }
         }
     }
 }

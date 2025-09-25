@@ -138,9 +138,11 @@ class File(db.Model):
     original_filename = db.Column(db.String(255), nullable=False)
     mime_type = db.Column(db.String(100), nullable=False)
     size = db.Column(db.Integer, nullable=False)  # Size in bytes
-    storage_path = db.Column(db.String(500), nullable=False)  # Path in R2 storage
+    storage_path = db.Column(db.String(500), nullable=False)  # Path in R2 storage or local path
     thumbnail_path = db.Column(db.String(500))  # Path to thumbnail if generated
     upload_complete = db.Column(db.Boolean, default=False)
+    storage_backend = db.Column(db.String(20), default='local')  # 'local' or 'r2'
+    metadata_json = db.Column(db.Text())  # JSON metadata from storage backend
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
 
     # Foreign key to collection
@@ -160,3 +162,42 @@ class File(db.Model):
             return f"{self.size / (1024 * 1024):.1f} MB"
         else:
             return f"{self.size / (1024 * 1024 * 1024):.1f} GB"
+
+    @property
+    def is_r2_file(self):
+        """Check if file is stored in R2."""
+        return self.storage_backend == 'r2'
+
+    @property
+    def is_image(self):
+        """Check if file is an image."""
+        return self.mime_type and self.mime_type.startswith('image/')
+
+    @property
+    def storage_url(self):
+        """Get storage URL based on backend."""
+        if self.is_r2_file:
+            from app.services.storage_service import StorageService
+            storage = StorageService()
+            return storage.generate_file_url(self)
+        else:
+            from flask import url_for
+            return url_for('collections.serve_file', file_uuid=self.uuid)
+
+    def get_metadata(self):
+        """Parse and return metadata JSON."""
+        if self.metadata_json:
+            import json
+            try:
+                return json.loads(self.metadata_json)
+            except json.JSONDecodeError:
+                return {}
+        return {}
+
+    def set_metadata(self, metadata_dict):
+        """Set metadata as JSON string."""
+        if metadata_dict:
+            import json
+            self.metadata_json = json.dumps(metadata_dict)
+        else:
+            self.metadata_json = None

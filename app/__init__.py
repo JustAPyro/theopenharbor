@@ -1,41 +1,42 @@
-from dotenv import load_dotenv
 import os
+import logging
 from flask import Flask
 from flask_login import LoginManager
-from app.integrations.file_storage import required_envs as file_storage_envs
 
-# Load .env file and declare required environment vars
-load_dotenv()
-required_envs = [
-    'TSH_SECRET_KEY'
-]
-required_envs += file_storage_envs
+# Import configuration classes
+from config import config
 
-# Verify required environment variables
-missing = []
-for env in required_envs:
-    if os.getenv(env) == None:
-        missing.append(env)
-
-# If any are missing raise an error
-if missing:
-    raise RuntimeError(f"Missing required environment variables: {', '.join(missing)}")
+logger = logging.getLogger(__name__)
 
 
 def create_app(config_name=None):
     app = Flask(__name__)
-    app.config['SECRET_KEY'] = os.getenv('TSH_SECRET_KEY')
 
-    # Database configuration
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
-        'DATABASE_URL',
-        'sqlite:///openharbor.db'
-    )
-    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    # Load configuration
+    config_name = config_name or os.environ.get('FLASK_ENV', 'development')
+    config_class = config[config_name]
+    app.config.from_object(config_class)
 
-    # Security configurations
-    app.config['WTF_CSRF_ENABLED'] = True
-    app.config['WTF_CSRF_TIME_LIMIT'] = None  # No time limit for CSRF tokens
+    # Validate required configuration
+    try:
+        config_class.validate_required_config()
+    except ValueError as e:
+        if not app.config.get('TESTING'):
+            raise RuntimeError(f"Configuration error: {str(e)}")
+
+    # Initialize R2 Storage
+    try:
+        if app.config.get('STORAGE_BACKEND') == 'r2':
+            from app.integrations.file_storage import CloudflareR2Storage, FileStorageError
+            app.r2_storage = CloudflareR2Storage()
+            logger.info("CloudflareR2 storage initialized successfully")
+        else:
+            app.r2_storage = None
+            logger.info("Using local storage backend")
+    except Exception as e:
+        logger.error(f"Failed to initialize R2 storage: {e}")
+        if not app.config.get('TESTING'):
+            raise RuntimeError(f"R2 storage initialization failed: {e}")
 
     # Initialize extensions
     from app.models import db
