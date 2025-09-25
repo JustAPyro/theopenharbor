@@ -1,0 +1,295 @@
+{% extends "root.html" %}
+
+{% block title %}Upload Collection - The Open Harbor{% endblock %}
+
+{% block meta_description %}Upload and share your photo collections with The Open Harbor. Secure, fast uploads with beautiful galleries for photographers.{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('collections.static', filename='css/upload.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="upload-page">
+  <!-- Page Header -->
+  <div class="container py-4">
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Home</a></li>
+        <li class="breadcrumb-item active" aria-current="page">Upload Collection</li>
+      </ol>
+    </nav>
+
+    <div class="row">
+      <div class="col-lg-8 mx-auto">
+        <h1 class="h2 text-center mb-1">Upload Collection</h1>
+        <p class="text-muted text-center mb-4">Create a beautiful gallery to share your photos</p>
+
+        <!-- Upload Form Container -->
+        <div class="upload-container">
+          <!-- Upload Zone -->
+          <div class="upload-zone" id="uploadZone" role="button" tabindex="0"
+               aria-label="Upload photos to collection"
+               aria-describedby="upload-instructions">
+            <div class="upload-zone-content">
+              <div class="upload-icon">
+                <i class="bi bi-cloud-upload" aria-hidden="true"></i>
+              </div>
+              <h3 class="upload-title">Drag photos here or click to browse</h3>
+              <p class="upload-subtitle">Upload JPG, PNG, HEIC, or RAW files up to 50MB each (10GB total)</p>
+
+              <!-- File Format Icons -->
+              <div class="format-icons">
+                <span class="format-badge">JPG</span>
+                <span class="format-badge">PNG</span>
+                <span class="format-badge">HEIC</span>
+                <span class="format-badge">RAW</span>
+              </div>
+
+              <button type="button" class="btn btn-outline-primary mt-3" id="browseButton">
+                <i class="bi bi-folder2-open me-2"></i>Browse Files
+              </button>
+            </div>
+
+            <!-- Hidden file input -->
+            <input type="file" id="fileInput" multiple accept="image/*,.heic,.heif,.tiff,.dng"
+                   class="visually-hidden" aria-hidden="true">
+          </div>
+
+          <!-- Upload Instructions (Screen Reader) -->
+          <div id="upload-instructions" class="sr-only">
+            Drag and drop photos here, or press Enter to browse files.
+            Supported formats: JPG, PNG, HEIC, RAW. Maximum 50MB per file, 10GB total.
+            No limit on number of files - perfect for large photo shoots.
+          </div>
+
+          <!-- File Preview Grid -->
+          <div class="file-preview-section" id="filePreviewSection" style="display: none;">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <h4 class="h5 mb-0">Selected Files</h4>
+              <button type="button" class="btn btn-outline-secondary btn-sm" id="clearAllButton">
+                <i class="bi bi-trash me-2"></i>Clear All
+              </button>
+            </div>
+
+            <div class="file-preview-grid" id="filePreviewGrid" role="list">
+              <!-- File cards will be inserted here dynamically -->
+            </div>
+
+            <div class="upload-summary mt-3">
+              <div class="row text-center">
+                <div class="col-4">
+                  <div class="summary-stat">
+                    <div class="stat-number" id="fileCount">0</div>
+                    <div class="stat-label">Files</div>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="summary-stat">
+                    <div class="stat-number" id="totalSize">0 MB</div>
+                    <div class="stat-label">Total Size</div>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="summary-stat">
+                    <div class="stat-number" id="validFiles">0</div>
+                    <div class="stat-label">Valid</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Collection Settings Panel -->
+          <div class="collection-settings" id="collectionSettings" style="display: none;">
+            <h4 class="h5 mb-3">Collection Settings</h4>
+
+            <form id="collectionForm" method="POST" novalidate>
+              {{ form.hidden_tag() }}
+
+              <div class="row">
+                <div class="col-md-8">
+                  <!-- Collection Name -->
+                  <div class="mb-3">
+                    {{ form.name.label(class="form-label required") }}
+                    {{ form.name(class="form-control") }}
+                    <div class="character-counter">
+                      <span id="nameCounter">0</span>/100 characters
+                    </div>
+                    <div class="invalid-feedback" id="nameError"></div>
+                  </div>
+
+                  <!-- Description -->
+                  <div class="mb-3">
+                    {{ form.description.label(class="form-label") }}
+                    {{ form.description(class="form-control") }}
+                    <div class="character-counter">
+                      <span id="descriptionCounter">0</span>/500 characters
+                    </div>
+                    <div class="invalid-feedback" id="descriptionError"></div>
+                  </div>
+                </div>
+
+                <div class="col-md-4">
+                  <!-- Privacy Settings -->
+                  <div class="mb-3">
+                    {{ form.privacy.label(class="form-label") }}
+                    {{ form.privacy(class="form-select", id="privacySelect") }}
+                  </div>
+
+                  <!-- Password (conditional) -->
+                  <div class="mb-3" id="passwordField" style="display: none;">
+                    {{ form.password.label(class="form-label") }}
+                    {{ form.password(class="form-control") }}
+                    <div class="form-text">
+                      <i class="bi bi-info-circle me-1"></i>
+                      Minimum 4 characters
+                    </div>
+                  </div>
+
+                  <!-- Expiration -->
+                  <div class="mb-3">
+                    {{ form.expiration.label(class="form-label") }}
+                    {{ form.expiration(class="form-select") }}
+                  </div>
+                </div>
+              </div>
+            </form>
+          </div>
+
+          <!-- Upload Progress Section -->
+          <div class="upload-progress-section" id="uploadProgressSection" style="display: none;">
+            <h4 class="h5 mb-3">Upload Progress</h4>
+
+            <div class="progress-container">
+              <div class="upload-progress" role="progressbar"
+                   aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                <div class="upload-progress-bar" id="uploadProgressBar" style="width: 0%"></div>
+              </div>
+
+              <div class="progress-info mt-2">
+                <div class="row">
+                  <div class="col-6">
+                    <small class="text-muted">
+                      <span id="progressText">Ready to upload</span>
+                    </small>
+                  </div>
+                  <div class="col-6 text-end">
+                    <small class="text-muted">
+                      <span id="progressPercent">0%</span>
+                    </small>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Live Upload Status -->
+            <div class="upload-status mt-3" id="uploadStatus" aria-live="polite" aria-atomic="true">
+              <!-- Status messages will appear here -->
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="action-buttons" id="actionButtons" style="display: none;">
+            <div class="d-flex gap-3 justify-content-center flex-wrap">
+              <button type="button" class="btn btn-primary btn-lg" id="startUploadButton" disabled>
+                <i class="bi bi-upload me-2"></i>
+                <span class="button-text">Start Upload</span>
+              </button>
+
+              <button type="button" class="btn btn-outline-secondary" id="cancelUploadButton" style="display: none;">
+                <i class="bi bi-x-circle me-2"></i>Cancel
+              </button>
+            </div>
+          </div>
+
+          <!-- Error Messages -->
+          <div class="alert alert-danger mt-3" id="errorAlert" style="display: none;" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            <span id="errorMessage"></span>
+          </div>
+
+          <!-- Success Message -->
+          <div class="alert alert-success mt-3" id="successAlert" style="display: none;" role="alert">
+            <i class="bi bi-check-circle me-2"></i>
+            <span id="successMessage"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Upload Loading Overlay -->
+<div class="upload-loading-overlay" id="uploadLoadingOverlay" style="display: none;">
+  <div class="loading-content">
+    <div class="loading-spinner">
+      <div class="spinner"></div>
+    </div>
+    <h3 class="loading-title" id="loadingTitle">Uploading Your Photos</h3>
+    <p class="loading-subtitle" id="loadingSubtitle">Please don't close this window while your files are uploading</p>
+
+    <div class="loading-progress">
+      <div class="progress-bar" id="loadingProgressBar">
+        <div class="progress-fill" id="loadingProgressFill" style="width: 0%"></div>
+      </div>
+      <div class="progress-text">
+        <span id="loadingProgressText">Preparing upload...</span>
+        <span id="loadingProgressPercent">0%</span>
+      </div>
+    </div>
+
+    <div class="loading-stats">
+      <div class="stat">
+        <span class="stat-value" id="loadingFilesCompleted">0</span>
+        <span class="stat-label">of <span id="loadingFilesTotal">0</span> files</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="loadingDataUploaded">0 MB</span>
+        <span class="stat-label">uploaded</span>
+      </div>
+      <div class="stat">
+        <span class="stat-value" id="loadingTimeRemaining">--</span>
+        <span class="stat-label">remaining</span>
+      </div>
+    </div>
+
+    <div class="loading-current-file">
+      <small>Currently uploading: <span id="currentFileName">--</span></small>
+    </div>
+  </div>
+</div>
+
+<!-- File Card Template -->
+<template id="fileCardTemplate">
+  <div class="file-card" role="listitem">
+    <div class="file-thumbnail">
+      <img src="" alt="" class="thumbnail-img">
+      <div class="file-overlay">
+        <div class="file-status">
+          <i class="bi bi-check-circle text-success" style="display: none;"></i>
+          <i class="bi bi-exclamation-triangle text-danger" style="display: none;"></i>
+          <div class="spinner-border spinner-border-sm text-light" style="display: none;" aria-hidden="true"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="file-info">
+      <div class="file-name"></div>
+      <div class="file-size"></div>
+    </div>
+
+    <button type="button" class="file-remove" aria-label="Remove file" title="Remove file">
+      <i class="bi bi-x-lg" aria-hidden="true"></i>
+    </button>
+
+    <div class="file-progress" style="display: none;">
+      <div class="file-progress-bar" style="width: 0%"></div>
+    </div>
+  </div>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<!-- <script src="{{ url_for('collections.static', filename='js/upload-debug.js') }}"></script> -->
+<script src="{{ url_for('collections.static', filename='js/upload.js') }}"></script>
+{% endblock %}

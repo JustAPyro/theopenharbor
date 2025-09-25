@@ -19,11 +19,16 @@ def app():
         "TESTING": True,
         "SECRET_KEY": "test-secret-key-for-testing-only",
         "WTF_CSRF_ENABLED": False,  # Disable CSRF for testing
+        "SQLALCHEMY_DATABASE_URI": f"sqlite:///{db_path}",
     })
 
     # Create the app context
     ctx = app.app_context()
     ctx.push()
+
+    # Import and create tables
+    from app.models import db
+    db.create_all()
 
     yield app
 

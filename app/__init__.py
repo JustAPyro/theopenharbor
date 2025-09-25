@@ -2,12 +2,14 @@ from dotenv import load_dotenv
 import os
 from flask import Flask
 from flask_login import LoginManager
+from app.integrations.file_storage import required_envs as file_storage_envs
 
 # Load .env file and declare required environment vars
 load_dotenv()
 required_envs = [
     'TSH_SECRET_KEY'
 ]
+required_envs += file_storage_envs
 
 # Verify required environment variables
 missing = []
@@ -61,6 +63,9 @@ def create_app(config_name=None):
 
     from app.views.auth import auth as auth_bp
     app.register_blueprint(auth_bp, url_prefix='/auth')
+
+    from app.views.collections import collections as collections_bp
+    app.register_blueprint(collections_bp, url_prefix='/collections')
 
     return app
 

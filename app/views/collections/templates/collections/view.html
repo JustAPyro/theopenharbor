@@ -1,0 +1,271 @@
+{% extends "root.html" %}
+
+{% block title %}{{ collection.name }} - The Open Harbor{% endblock %}
+
+{% block meta_description %}View and download photos from {{ collection.name }} collection on The Open Harbor.{% endblock %}
+
+{% block content %}
+<div class="collection-view-page">
+  <div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+      <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Home</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('collections.index') }}">Collections</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ collection.name }}</li>
+      </ol>
+    </nav>
+
+    <!-- Collection Header -->
+    <div class="row mb-4">
+      <div class="col-lg-8">
+        <h1 class="h2 mb-2">{{ collection.name }}</h1>
+        {% if collection.description %}
+          <p class="text-muted">{{ collection.description }}</p>
+        {% endif %}
+
+        <div class="collection-meta">
+          <small class="text-muted">
+            <i class="bi bi-calendar me-1"></i>
+            Created {{ collection.created_at.strftime('%B %d, %Y') }}
+            •
+            <i class="bi bi-images me-1"></i>
+            {{ collection.file_count }} file{{ 's' if collection.file_count != 1 else '' }}
+            •
+            <i class="bi bi-hdd me-1"></i>
+            {{ (collection.total_size / (1024*1024))|round(1) }} MB total
+          </small>
+        </div>
+      </div>
+
+      <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+        {% if collection.privacy == 'password' %}
+          <span class="badge bg-warning">
+            <i class="bi bi-lock me-1"></i>Password Protected
+          </span>
+        {% elif collection.privacy == 'public' %}
+          <span class="badge bg-success">
+            <i class="bi bi-globe me-1"></i>Public
+          </span>
+        {% else %}
+          <span class="badge bg-secondary">
+            <i class="bi bi-link-45deg me-1"></i>Unlisted
+          </span>
+        {% endif %}
+
+        {% if collection.expires_at %}
+          <div class="mt-2">
+            <small class="text-muted">
+              <i class="bi bi-clock me-1"></i>
+              Expires {{ collection.expires_at.strftime('%B %d, %Y') }}
+            </small>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- File Gallery -->
+    {% if collection.files %}
+      <div class="file-gallery">
+        <div class="row g-3">
+          {% for file in collection.files %}
+            <div class="col-6 col-md-4 col-lg-3 col-xl-2">
+              <div class="gallery-item">
+                <div class="gallery-thumbnail">
+                  {% if file.thumbnail_path %}
+                    <img src="{{ file.thumbnail_path }}" alt="{{ file.original_filename }}" class="img-fluid">
+                  {% else %}
+                    <div class="placeholder-thumbnail">
+                      <i class="bi bi-file-earmark-image"></i>
+                      <small>{{ file.original_filename.split('.')[-1].upper() }}</small>
+                    </div>
+                  {% endif %}
+                </div>
+
+                <div class="gallery-overlay">
+                  <div class="overlay-actions">
+                    <button class="btn btn-light btn-sm" title="View full size">
+                      <i class="bi bi-zoom-in"></i>
+                    </button>
+                    <button class="btn btn-light btn-sm" title="Download">
+                      <i class="bi bi-download"></i>
+                    </button>
+                  </div>
+                </div>
+
+                <div class="gallery-info">
+                  <div class="file-name">{{ file.original_filename }}</div>
+                  <div class="file-size">{{ file.size_human }}</div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Collection Actions -->
+      <div class="collection-actions mt-4">
+        <div class="d-flex gap-2 justify-content-center">
+          <button class="btn btn-primary">
+            <i class="bi bi-download me-2"></i>Download All
+          </button>
+          <button class="btn btn-outline-primary">
+            <i class="bi bi-share me-2"></i>Share Collection
+          </button>
+        </div>
+      </div>
+    {% else %}
+      <!-- Empty State -->
+      <div class="empty-collection text-center py-5">
+        <div class="empty-icon mb-3">
+          <i class="bi bi-images" style="font-size: 3rem; color: var(--color-horizon);"></i>
+        </div>
+        <h3 class="h5">No files in this collection</h3>
+        <p class="text-muted">Files will appear here once they are uploaded.</p>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+.collection-view-page {
+  background: var(--color-bg);
+  min-height: 100vh;
+}
+
+.collection-meta {
+  margin-top: var(--space-sm);
+}
+
+.file-gallery {
+  margin-top: var(--space-lg);
+}
+
+.gallery-item {
+  position: relative;
+  background: var(--color-white);
+  border-radius: var(--radius-btn);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: all 200ms ease;
+}
+
+.gallery-item:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-hover);
+}
+
+.gallery-thumbnail {
+  aspect-ratio: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+.gallery-thumbnail img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 200ms ease;
+}
+
+.gallery-item:hover .gallery-thumbnail img {
+  transform: scale(1.05);
+}
+
+.placeholder-thumbnail {
+  width: 100%;
+  height: 100%;
+  background: var(--color-bg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-horizon);
+  font-size: 2rem;
+}
+
+.placeholder-thumbnail small {
+  font-size: 0.7rem;
+  margin-top: 0.5rem;
+  font-weight: 600;
+}
+
+.gallery-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 32px;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 200ms ease;
+}
+
+.gallery-item:hover .gallery-overlay {
+  opacity: 1;
+}
+
+.overlay-actions {
+  display: flex;
+  gap: var(--space-sm);
+}
+
+.overlay-actions .btn {
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gallery-info {
+  padding: var(--space-sm);
+  background: var(--color-white);
+  height: 60px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.file-name {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-anchor);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 2px;
+}
+
+.file-size {
+  font-size: 0.7rem;
+  color: var(--color-anchor);
+  opacity: 0.6;
+}
+
+.collection-actions {
+  border-top: 1px solid #E6E6E6;
+  padding-top: var(--space-lg);
+}
+
+.empty-collection {
+  margin: var(--space-3xl) 0;
+}
+
+@media (max-width: 768px) {
+  .gallery-overlay {
+    opacity: 1;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  .overlay-actions .btn {
+    width: 32px;
+    height: 32px;
+  }
+}
+</style>
+{% endblock %}

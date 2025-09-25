@@ -1,0 +1,409 @@
+{% extends "root.html" %}
+
+{% block title %}My Collections - The Open Harbor{% endblock %}
+
+{% block meta_description %}Manage your photo collections on The Open Harbor. Upload, organize, and share your photos securely.{% endblock %}
+
+{% block content %}
+<div class="collections-index-page">
+  <div class="container py-4">
+    <!-- Page Header -->
+    <div class="row align-items-center mb-4">
+      <div class="col">
+        <h1 class="h2 mb-1">My Collections</h1>
+        <p class="text-muted">Organize and share your photo collections</p>
+      </div>
+      <div class="col-auto">
+        <a href="{{ url_for('collections.upload') }}" class="btn btn-primary">
+          <i class="bi bi-plus-circle me-2"></i>New Collection
+        </a>
+      </div>
+    </div>
+
+    {% if collections %}
+      <!-- Collections Grid -->
+      <div class="collections-grid">
+        <div class="row g-4">
+          {% for collection in collections %}
+            <div class="col-12 col-md-6 col-lg-4">
+              <div class="collection-card">
+                <!-- Collection Preview -->
+                <div class="collection-preview">
+                  {% if collection.files %}
+                    {% set preview_files = collection.files[:4] %}
+                    <div class="preview-grid preview-grid--{{ preview_files|length }}">
+                      {% for file in preview_files %}
+                        <div class="preview-item">
+                          {% if file.thumbnail_path %}
+                            <img src="{{ file.thumbnail_path }}" alt="">
+                          {% else %}
+                            <div class="preview-placeholder">
+                              <i class="bi bi-file-earmark-image"></i>
+                            </div>
+                          {% endif %}
+                        </div>
+                      {% endfor %}
+                    </div>
+
+                    {% if collection.file_count > 4 %}
+                      <div class="preview-overlay">
+                        <span class="more-count">+{{ collection.file_count - 4 }}</span>
+                      </div>
+                    {% endif %}
+                  {% else %}
+                    <div class="preview-empty">
+                      <i class="bi bi-images"></i>
+                      <span>Empty Collection</span>
+                    </div>
+                  {% endif %}
+                </div>
+
+                <!-- Collection Info -->
+                <div class="collection-info">
+                  <h3 class="collection-title">
+                    <a href="{{ url_for('collections.view', uuid=collection.uuid) }}">
+                      {{ collection.name }}
+                    </a>
+                  </h3>
+
+                  {% if collection.description %}
+                    <p class="collection-description">{{ collection.description[:100] }}{% if collection.description|length > 100 %}...{% endif %}</p>
+                  {% endif %}
+
+                  <div class="collection-meta">
+                    <div class="meta-item">
+                      <i class="bi bi-images me-1"></i>
+                      <span>{{ collection.file_count }} file{{ 's' if collection.file_count != 1 else '' }}</span>
+                    </div>
+
+                    <div class="meta-item">
+                      <i class="bi bi-hdd me-1"></i>
+                      <span>{{ (collection.total_size / (1024*1024))|round(1) }} MB</span>
+                    </div>
+
+                    <div class="meta-item">
+                      <i class="bi bi-calendar me-1"></i>
+                      <span>{{ collection.created_at.strftime('%b %d, %Y') }}</span>
+                    </div>
+                  </div>
+
+                  <div class="collection-privacy">
+                    {% if collection.privacy == 'password' %}
+                      <span class="privacy-badge privacy-badge--password">
+                        <i class="bi bi-lock me-1"></i>Password Protected
+                      </span>
+                    {% elif collection.privacy == 'public' %}
+                      <span class="privacy-badge privacy-badge--public">
+                        <i class="bi bi-globe me-1"></i>Public
+                      </span>
+                    {% else %}
+                      <span class="privacy-badge privacy-badge--unlisted">
+                        <i class="bi bi-link-45deg me-1"></i>Unlisted
+                      </span>
+                    {% endif %}
+
+                    {% if collection.expires_at %}
+                      <span class="privacy-badge privacy-badge--expires">
+                        <i class="bi bi-clock me-1"></i>Expires {{ collection.expires_at.strftime('%m/%d/%y') }}
+                      </span>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <!-- Collection Actions -->
+                <div class="collection-actions">
+                  <div class="dropdown">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                      <i class="bi bi-three-dots"></i>
+                    </button>
+                    <ul class="dropdown-menu">
+                      <li><a class="dropdown-item" href="{{ url_for('collections.view', uuid=collection.uuid) }}">
+                        <i class="bi bi-eye me-2"></i>View Collection
+                      </a></li>
+                      <li><a class="dropdown-item" href="#">
+                        <i class="bi bi-share me-2"></i>Share
+                      </a></li>
+                      <li><a class="dropdown-item" href="#">
+                        <i class="bi bi-download me-2"></i>Download All
+                      </a></li>
+                      <li><hr class="dropdown-divider"></li>
+                      <li><a class="dropdown-item" href="#">
+                        <i class="bi bi-pencil me-2"></i>Edit Settings
+                      </a></li>
+                      <li><a class="dropdown-item text-danger" href="#">
+                        <i class="bi bi-trash me-2"></i>Delete
+                      </a></li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Pagination (if needed) -->
+      <div class="pagination-wrapper mt-5">
+        <!-- Pagination controls would go here if implementing pagination -->
+      </div>
+
+    {% else %}
+      <!-- Empty State -->
+      <div class="empty-state text-center py-5">
+        <div class="empty-icon mb-4">
+          <i class="bi bi-images" style="font-size: 4rem; color: var(--color-horizon);"></i>
+        </div>
+        <h3 class="h4">No collections yet</h3>
+        <p class="text-muted mb-4">Start by creating your first photo collection</p>
+        <a href="{{ url_for('collections.upload') }}" class="btn btn-primary btn-lg">
+          <i class="bi bi-plus-circle me-2"></i>Create Your First Collection
+        </a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+<style>
+.collections-index-page {
+  background: var(--color-bg);
+  min-height: 100vh;
+}
+
+.collections-grid {
+  /* Grid styles handled by Bootstrap */
+}
+
+.collection-card {
+  background: var(--color-white);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+  transition: all 200ms ease;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.collection-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-hover);
+}
+
+.collection-preview {
+  height: 200px;
+  position: relative;
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.preview-grid {
+  width: 100%;
+  height: 100%;
+  display: grid;
+  gap: 2px;
+}
+
+.preview-grid--1 {
+  grid-template-columns: 1fr;
+}
+
+.preview-grid--2 {
+  grid-template-columns: 1fr 1fr;
+}
+
+.preview-grid--3 {
+  grid-template-columns: 2fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.preview-grid--3 .preview-item:first-child {
+  grid-row: 1 / -1;
+}
+
+.preview-grid--4 {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.preview-item {
+  overflow: hidden;
+  background: var(--color-bg);
+}
+
+.preview-item img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 200ms ease;
+}
+
+.collection-card:hover .preview-item img {
+  transform: scale(1.05);
+}
+
+.preview-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-horizon);
+  font-size: 2rem;
+  background: var(--color-bg);
+}
+
+.preview-empty {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-horizon);
+  font-size: 2rem;
+}
+
+.preview-empty span {
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+  font-weight: 500;
+}
+
+.preview-overlay {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.collection-info {
+  padding: var(--space-lg);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.collection-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  margin-bottom: var(--space-sm);
+  line-height: 1.3;
+}
+
+.collection-title a {
+  color: var(--color-anchor);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.collection-title a:hover {
+  color: var(--color-primary);
+}
+
+.collection-description {
+  font-size: 0.9rem;
+  color: var(--color-anchor);
+  opacity: 0.8;
+  margin-bottom: var(--space-md);
+  line-height: 1.4;
+}
+
+.collection-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+  font-size: 0.8rem;
+  color: var(--color-anchor);
+  opacity: 0.7;
+}
+
+.meta-item {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.collection-privacy {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-bottom: var(--space-md);
+}
+
+.privacy-badge {
+  font-size: 0.75rem;
+  padding: 4px 8px;
+  border-radius: var(--radius-btn);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.privacy-badge--public {
+  background: rgba(34, 197, 94, 0.1);
+  color: #22C55E;
+}
+
+.privacy-badge--unlisted {
+  background: rgba(107, 114, 128, 0.1);
+  color: #6B7280;
+}
+
+.privacy-badge--password {
+  background: rgba(245, 158, 11, 0.1);
+  color: #F59E0B;
+}
+
+.privacy-badge--expires {
+  background: rgba(239, 68, 68, 0.1);
+  color: #EF4444;
+}
+
+.collection-actions {
+  padding: 0 var(--space-lg) var(--space-lg);
+  margin-top: auto;
+}
+
+.empty-state {
+  margin: var(--space-3xl) 0;
+}
+
+@media (max-width: 768px) {
+  .collection-preview {
+    height: 160px;
+  }
+
+  .collection-info {
+    padding: var(--space-md);
+  }
+
+  .collection-meta {
+    flex-direction: column;
+    gap: var(--space-sm);
+  }
+
+  .collection-actions {
+    padding: 0 var(--space-md) var(--space-md);
+  }
+}
+
+@media (max-width: 576px) {
+  .preview-grid--3,
+  .preview-grid--4 {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+
+  .preview-grid--3 .preview-item:first-child {
+    grid-row: auto;
+  }
+}
+</style>
+{% endblock %}
