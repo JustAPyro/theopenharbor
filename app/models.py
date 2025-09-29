@@ -138,8 +138,15 @@ class File(db.Model):
     original_filename = db.Column(db.String(255), nullable=False)
     mime_type = db.Column(db.String(100), nullable=False)
     size = db.Column(db.Integer, nullable=False)  # Size in bytes
-    storage_path = db.Column(db.String(500), nullable=False)  # Path in R2 storage or local path
+    storage_path = db.Column(db.String(500), nullable=False)  # Original full-quality image
+
+    # Image variant paths for optimized loading
+    thumb_path = db.Column(db.String(500))  # Small thumbnail (~200x200) for grid display
+    medium_path = db.Column(db.String(500))  # Medium preview (~1200px) for lightbox
+
+    # Legacy thumbnail path - kept for backward compatibility
     thumbnail_path = db.Column(db.String(500))  # Path to thumbnail if generated
+
     upload_complete = db.Column(db.Boolean, default=False)
     storage_backend = db.Column(db.String(20), default='local')  # 'local' or 'r2'
     metadata_json = db.Column(db.Text())  # JSON metadata from storage backend
@@ -201,3 +208,32 @@ class File(db.Model):
             self.metadata_json = json.dumps(metadata_dict)
         else:
             self.metadata_json = None
+
+    @property
+    def has_variants(self):
+        """Check if image variants have been generated."""
+        return bool(self.thumb_path or self.medium_path)
+
+    @property
+    def preview_url(self):
+        """Get URL for medium-quality preview (for lightbox)."""
+        if self.medium_path:
+            from flask import url_for
+            return url_for('collections.serve_preview', file_uuid=self.uuid)
+        else:
+            # Fallback to original if no preview available
+            return self.storage_url
+
+    @property
+    def thumbnail_url(self):
+        """Get URL for small thumbnail (for grid display)."""
+        if self.thumb_path:
+            from flask import url_for
+            return url_for('collections.serve_thumbnail', file_uuid=self.uuid)
+        elif self.thumbnail_path:
+            # Fallback to legacy thumbnail path
+            from flask import url_for
+            return url_for('collections.serve_thumbnail', file_uuid=self.uuid)
+        else:
+            # Final fallback to original
+            return self.storage_url

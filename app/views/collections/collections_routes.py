@@ -169,10 +169,8 @@ def upload_files():
         def progress_callback(file_key, bytes_uploaded, total_bytes):
             """Progress callback for individual file uploads."""
             # This could be extended to use WebSocket for real-time updates
-            progress_percent = (bytes_uploaded / total_bytes) * 100
-            current_app.logger.debug(
-                f"Upload progress for {file_key}: {progress_percent:.1f}%"
-            )
+            # Note: Logging removed to avoid Flask application context issues
+            pass
 
         for file_key in request.files:
             file = request.files[file_key]
@@ -183,6 +181,14 @@ def upload_files():
                         file.filename, uploaded, total
                     )
 
+                    # Reset file stream position
+                    file.stream.seek(0)
+
+                    current_app.logger.info(
+                        f"Attempting upload: {file.filename}, size: {file.stream.seek(0, 2)}, backend: {storage_service.backend}"
+                    )
+                    file.stream.seek(0)
+
                     # Upload file using storage service
                     result = storage_service.upload_file(
                         file_obj=file.stream,
@@ -190,6 +196,8 @@ def upload_files():
                         collection=collection,
                         progress_callback=file_progress
                     )
+
+                    current_app.logger.info(f"Upload result for {file.filename}: {result}")
 
                     if result['success']:
                         db.session.add(result['file_record'])
@@ -211,18 +219,81 @@ def upload_files():
                         'error': str(e)
                     })
 
+        # Commit successful uploads to database
         if uploaded_files:
-            db.session.commit()
-            current_app.logger.info(
-                f"Uploaded {len(uploaded_files)} files to collection {collection_id}"
-            )
+            try:
+                db.session.commit()
+                current_app.logger.info(
+                    f"Uploaded {len(uploaded_files)} files to collection {collection_id}"
+                )
 
-        return jsonify({
-            'success': True,
+                # Generate image variants after successful upload
+                # Note: This is non-blocking and won't fail the upload if it errors
+                try:
+                    from app.services.thumbnail_service import ThumbnailService
+
+                    # Get file records for uploaded files
+                    file_records = [
+                        File.query.filter_by(uuid=f['uuid']).first()
+                        for f in uploaded_files
+                    ]
+
+                    # Filter to only image files
+                    image_files = [f for f in file_records if f and f.is_image]
+
+                    if image_files:
+                        thumbnail_service = ThumbnailService()
+
+                        # Generate all variants (thumb + medium) in batch
+                        variant_results = thumbnail_service.batch_generate_variants(
+                            image_files,
+                            max_workers=3  # Limit concurrency for CPU-bound work
+                        )
+
+                        current_app.logger.info(
+                            f"Variant generation: {variant_results['successful']}/{variant_results['total']} successful"
+                        )
+                except Exception as e:
+                    # Don't fail the upload if variant generation fails
+                    current_app.logger.error(f"Variant generation error: {str(e)}")
+
+            except Exception as e:
+                db.session.rollback()
+                current_app.logger.error(f"Database commit failed: {str(e)}")
+                return jsonify({
+                    'success': False,
+                    'error': 'Database error: Could not save file records'
+                }), 500
+
+        # Determine overall success based on results
+        total_files = len(uploaded_files) + len(upload_errors)
+        overall_success = len(uploaded_files) > 0
+
+        response_data = {
+            'success': overall_success,
             'uploaded_files': uploaded_files,
             'errors': upload_errors,
-            'collection_url': url_for('collections.view', uuid=collection.uuid)
-        })
+            'summary': {
+                'total_files': total_files,
+                'successful': len(uploaded_files),
+                'failed': len(upload_errors)
+            }
+        }
+
+        # Add collection URL only if some files were uploaded
+        if uploaded_files:
+            response_data['collection_url'] = url_for('collections.view', uuid=collection.uuid)
+
+        # Return appropriate status code
+        if upload_errors and not uploaded_files:
+            # All files failed
+            return jsonify(response_data), 400
+        elif upload_errors:
+            # Partial failure
+            return jsonify(response_data), 207  # Multi-Status
+        else:
+            # All files succeeded
+            return jsonify(response_data), 200
 
     except Exception as e:
         db.session.rollback()
@@ -297,10 +368,10 @@ def serve_file(file_uuid):
 
 @collections.route('/files/<uuid:file_uuid>/thumbnail')
 def serve_thumbnail(file_uuid):
-    """Serve thumbnail if available."""
+    """Serve small thumbnail for grid display."""
     file_record = File.query.filter_by(uuid=str(file_uuid)).first_or_404()
 
-    # Check access permissions (same as serve_file)
+    # Check access permissions
     collection = file_record.collection
 
     if collection.privacy == 'password':
@@ -311,20 +382,23 @@ def serve_thumbnail(file_uuid):
     if collection.expires_at and collection.expires_at < datetime.now(timezone.utc):
         abort(410)
 
-    if file_record.thumbnail_path:
+    # Try to serve thumb_path (new variant system) first
+    variant_path = file_record.thumb_path or file_record.thumbnail_path
+
+    if variant_path:
         try:
             from app.services.storage_service import StorageService
             storage_service = StorageService()
 
             if storage_service.backend == 'r2' and storage_service.r2_storage:
                 thumbnail_url = storage_service.r2_storage.generate_presigned_url(
-                    file_record.thumbnail_path,
-                    expiry_seconds=7200  # Longer cache for thumbnails
+                    variant_path,
+                    expiry_seconds=7200  # 2 hour cache for thumbnails
                 )
                 return redirect(thumbnail_url)
             else:
                 # Serve local thumbnail
-                thumbnail_path = os.path.join(current_app.instance_path, file_record.thumbnail_path)
+                thumbnail_path = os.path.join(current_app.instance_path, variant_path)
                 if os.path.exists(thumbnail_path):
                     return send_file(
                         thumbnail_path,
@@ -339,6 +413,50 @@ def serve_thumbnail(file_uuid):
     else:
         # Generate thumbnail on-demand if not exists
         return redirect(url_for('collections.generate_thumbnail', file_uuid=file_uuid))
+
+
+@collections.route('/files/<uuid:file_uuid>/preview')
+def serve_preview(file_uuid):
+    """Serve medium-quality preview optimized for lightbox viewing."""
+    file_record = File.query.filter_by(uuid=str(file_uuid)).first_or_404()
+
+    # Check access permissions
+    collection = file_record.collection
+
+    if collection.privacy == 'password':
+        session_key = f'collection_access_{collection.uuid}'
+        if session_key not in session:
+            return redirect(url_for('collections.password_required', uuid=collection.uuid))
+
+    if collection.expires_at and collection.expires_at < datetime.now(timezone.utc):
+        abort(410)
+
+    # Serve medium variant if available
+    if file_record.medium_path:
+        try:
+            from app.services.storage_service import StorageService
+            storage_service = StorageService()
+
+            if storage_service.backend == 'r2' and storage_service.r2_storage:
+                preview_url = storage_service.r2_storage.generate_presigned_url(
+                    file_record.medium_path,
+                    expiry_seconds=7200  # 2 hour cache
+                )
+                return redirect(preview_url)
+            else:
+                # Serve local preview
+                preview_path = os.path.join(current_app.instance_path, file_record.medium_path)
+                if os.path.exists(preview_path):
+                    return send_file(
+                        preview_path,
+                        mimetype='image/jpeg'
+                    )
+
+        except Exception as e:
+            current_app.logger.error(f"Failed to serve preview for {file_uuid}: {e}")
+
+    # Fallback: serve original file if preview not available
+    return redirect(url_for('collections.serve_file', file_uuid=file_uuid))
 
 
 @collections.route('/files/<uuid:file_uuid>/generate-thumbnail')

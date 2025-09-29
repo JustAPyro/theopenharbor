@@ -19,11 +19,11 @@ required_envs = [
 ]
 
 # Configuration Constants
-R2_ACCOUNT_ID = os.getenv('R2_ACCOUNT_ID')
-R2_ACCESS_KEY_ID = os.getenv('R2_ACCESS_KEY_ID')
-R2_SECRET_ACCESS_KEY = os.getenv('R2_SECRET_ACCESS_KEY')
-R2_BUCKET_NAME = os.getenv('R2_BUCKET_NAME')
-R2_REGION = os.getenv('R2_REGION', 'auto')
+R2_ACCOUNT_ID = os.getenv('TOH_R2_ACCOUNT_ID')
+R2_ACCESS_KEY_ID = os.getenv('TOH_R2_ACCESS_KEY')
+R2_SECRET_ACCESS_KEY = os.getenv('TOH_R2_SECRET_KEY')
+R2_BUCKET_NAME = os.getenv('TOH_R2_BUCKET_NAME')
+R2_REGION = os.getenv('TOH_R2_REGION', 'auto')
 
 # File handling constants
 MULTIPART_THRESHOLD = 100 * 1024 * 1024  # 100MB
@@ -67,10 +67,10 @@ class CloudflareR2Storage:
 
     def _validate_config(self) -> None:
         required_vars = {
-            'R2_ACCOUNT_ID': self.account_id,
-            'R2_ACCESS_KEY_ID': self.access_key_id,
-            'R2_SECRET_ACCESS_KEY': self.secret_access_key,
-            'R2_BUCKET_NAME': self.bucket_name
+            'TOH_R2_ACCOUNT_ID': self.account_id,
+            'TOH_R2_ACCESS_KEY': self.access_key_id,
+            'TOH_R2_SECRET_KEY': self.secret_access_key,
+            'TOH_R2_BUCKET_NAME': self.bucket_name
         }
 
         missing = [var for var, value in required_vars.items() if not value]
@@ -203,12 +203,19 @@ class CloudflareR2Storage:
             if self._should_use_multipart(file_info['file_size']):
                 result = self._multipart_upload(file_obj, key, extra_args, progress_callback)
             else:
+                # Handle progress callback for single-part uploads
+                callback_wrapper = None
                 if progress_callback:
                     def callback_wrapper(bytes_transferred):
                         progress_callback(bytes_transferred, file_info['file_size'])
-                    extra_args['Callback'] = callback_wrapper
 
-                self.client.upload_fileobj(file_obj, self.bucket_name, key, ExtraArgs=extra_args)
+                self.client.upload_fileobj(
+                    file_obj,
+                    self.bucket_name,
+                    key,
+                    ExtraArgs=extra_args,
+                    Callback=callback_wrapper
+                )
                 result = {
                     'key': key,
                     'bucket': self.bucket_name,

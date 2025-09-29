@@ -725,27 +725,39 @@ class CollectionUploader {
                             (progress) => this.handleFileProgress(fileObj.id, progress, fileProgressMap, totalBytes)
                         );
 
-                        if (response.success) {
-                            fileObj.status = 'uploaded';
-                            fileObj.progress = 100;
-                            completedFiles++;
-                            uploadedBytes += fileObj.file.size;
-                            this.updateFileCardStatus(fileObj);
+                        // Handle response with improved error handling
+                        if (response.success || (response.uploaded_files && response.uploaded_files.length > 0)) {
+                            // Check if this specific file was uploaded successfully
+                            const uploadedFile = response.uploaded_files?.find(f => f.filename === fileObj.name);
 
-                            // Update loading overlay
-                            this.updateLoadingOverlay(completedFiles, totalFiles, uploadedBytes, totalBytes);
+                            if (uploadedFile) {
+                                fileObj.status = 'uploaded';
+                                fileObj.progress = 100;
+                                completedFiles++;
+                                uploadedBytes += fileObj.file.size;
+                                this.updateFileCardStatus(fileObj);
 
-                            this.addStatusMessage(`✓ ${fileObj.name} uploaded successfully`, 'success');
+                                // Update loading overlay
+                                this.updateLoadingOverlay(completedFiles, totalFiles, uploadedBytes, totalBytes);
 
-                            // Show R2-specific info if available
-                            if (response.uploaded_files && response.uploaded_files[0] && response.uploaded_files[0].storage_info) {
-                                const storageInfo = response.uploaded_files[0].storage_info;
-                                console.log(`R2 upload info for ${fileObj.name}:`, storageInfo);
+                                this.addStatusMessage(`✓ ${fileObj.name} uploaded successfully`, 'success');
+
+                                // Show R2-specific info if available
+                                if (uploadedFile.storage_info) {
+                                    console.log(`R2 upload info for ${fileObj.name}:`, uploadedFile.storage_info);
+                                }
+
+                                break; // Success, exit retry loop
+                            } else {
+                                // File was not in the uploaded_files list, check for specific error
+                                const fileError = response.errors?.find(e => e.filename === fileObj.name);
+                                const errorMsg = fileError ? fileError.error : 'Upload failed for unknown reason';
+                                throw new Error(errorMsg);
                             }
-
-                            break; // Success, exit retry loop
                         } else {
-                            throw new Error(response.error || 'Upload failed');
+                            // Complete failure response
+                            const errorMsg = response.error || 'Upload failed';
+                            throw new Error(errorMsg);
                         }
 
                     } catch (error) {
@@ -791,6 +803,9 @@ class CollectionUploader {
         } else {
             this.showError('All file uploads failed');
         }
+
+        // Reset upload state after completion
+        this.resetUploadState();
     }
 
     cancelUpload() {

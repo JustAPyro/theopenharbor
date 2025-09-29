@@ -49,10 +49,28 @@ class StorageService:
                 return self._upload_to_local(file_obj, filename, collection)
 
         except Exception as e:
-            logger.error(f"Upload failed for {filename}: {str(e)}")
+            import traceback
+            error_details = {
+                'filename': filename,
+                'error_type': type(e).__name__,
+                'error_message': str(e),
+                'backend': self.backend,
+                'traceback': traceback.format_exc()
+            }
+            logger.error(f"Upload failed for {filename}: {error_details}")
+
+            # Return user-friendly error message
+            user_error = str(e)
+            if 'ValidationError' in str(type(e)):
+                user_error = f"File validation failed: {str(e)}"
+            elif 'UploadError' in str(type(e)):
+                user_error = f"Upload failed: {str(e)}"
+            elif 'FileStorageError' in str(type(e)):
+                user_error = f"Storage error: {str(e)}"
+
             return {
                 'success': False,
-                'error': str(e),
+                'error': user_error,
                 'file_record': None,
                 'storage_info': None
             }

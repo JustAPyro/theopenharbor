@@ -12,14 +12,11 @@ import os
 
 @pytest.fixture(scope='function')
 def app():
-    """Create application for tests with temporary database."""
-    db_fd, db_path = tempfile.mkstemp()
+    """Create application for tests with in-memory database."""
+    # Create app with testing config from the start
+    app = create_app('testing')
 
-    app = create_app()
     app.config.update({
-        'TESTING': True,
-        'SQLALCHEMY_DATABASE_URI': f'sqlite:///{db_path}',
-        'WTF_CSRF_ENABLED': False,
         'SECRET_KEY': 'test-secret-key-for-testing',
     })
 
@@ -27,9 +24,6 @@ def app():
         db.create_all()
         yield app
         db.drop_all()
-
-    os.close(db_fd)
-    os.unlink(db_path)
 
 
 @pytest.fixture(scope='function')

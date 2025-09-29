@@ -11,22 +11,21 @@ from app import create_app
 @pytest.fixture(scope='session')
 def app():
     """Create application for the tests."""
-    # Create a temporary file for the test database
-    db_fd, db_path = tempfile.mkstemp()
+    # Set environment to use testing config BEFORE creating app
+    os.environ['FLASK_ENV'] = 'testing'
 
-    app = create_app()
+    app = create_app('testing')
+
+    # Additional test-specific config
     app.config.update({
-        "TESTING": True,
         "SECRET_KEY": "test-secret-key-for-testing-only",
-        "WTF_CSRF_ENABLED": False,  # Disable CSRF for testing
-        "SQLALCHEMY_DATABASE_URI": f"sqlite:///{db_path}",
     })
 
     # Create the app context
     ctx = app.app_context()
     ctx.push()
 
-    # Import and create tables
+    # Import and create tables (they should already be created by create_app, but ensure)
     from app.models import db
     db.create_all()
 
@@ -34,8 +33,6 @@ def app():
 
     # Cleanup
     ctx.pop()
-    os.close(db_fd)
-    os.unlink(db_path)
 
 
 @pytest.fixture(scope='session')
